@@ -1,0 +1,142 @@
+---
+title: "homework_202604"
+author: "xncheng"
+date: "2026-03-28"
+output:
+  word_document:
+    reference_docx: "my_style.docx"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      warning = FALSE,
+                      message = FALSE)
+```
+
+# 问题一：
+
+## 1、从建模目标、建模算法和评估方面，阐述机器学习建模与传统统计模型有哪些不同？
+
+**①建模目标。**统计建模是通过假设一个合适的数据模型，然后根据数据估计模型参数；机器学习是使用算法来学习响应与预测变量之间的关系，试图通过训练得到最佳模型，最后通过观察输入和响应发现主导模式。
+
+**②建模算法。**对于机器学习多采用增加模型的容量逼近数据分布，而统计模型则通过数学约束保证可解性。比如机器学习通常采用神经网络、深度学习、迭代优化等复杂度高的大模型进行数据预测；而传统统计模型使用线性模型和数学的统计检验等进行数据结果的解释。
+
+**③评估方面。**机器学习模型主要通过测试集的F1-score或者AUC-ROC的值来评估性能的优劣。机器学习通过K折交叉验证来防止过拟合。传统统计模型主要通过P值置信区间或者模型似然值来评估统计结果的可靠性。传统统计模型可以通过残差分析和假设检验对拟合结果进行可靠度的评估。
+
+# 问题二：
+
+## 2、生态学上常用树模型，包括随机森林、提升回归树。建模步骤包括：数据预处理、拆分数据集、选择特征、算法和训练模型、模型评估等。caret为各种机器学习算法提供了统一模板，加载doubs数据集，请根据问题填空。
+
+### 1）对于doubs中的鱼群数据，按照样地，计算各样地鱼类总丰度，作为新列abund。
+
+```{r}
+#加载包并提取数据  
+library(ade4)
+data(doubs)
+fish <- doubs$fish
+
+# 计算每个样地的总丰度，并添加为新列abund
+fish$abund <- rowSums(fish)
+
+# 查看结果
+head(fish)
+```
+
+### 2）利用train()，采用默认boostrap重采样方法，训练随机森林（randomForest）模型
+
+model_rf \<- train(abund \~ ., data = training_data, method = "**rf**")
+
+```{r}
+#加载相关包
+library(caret)
+library(randomForest)
+
+
+#划分训练集和测试集
+set.seed(123)
+
+Index <- createDataPartition(fish$abund, p = 0.7, list = FALSE) 
+training_data <- fish[Index,]
+test_data <- fish[-Index,]
+
+
+#训练模型
+model_rf <- train(abund ~ ., data = training_data, method = "rf")
+
+model_rf
+```
+
+### 3）通过trainControl()，向train()添加10-fold cross-validation重采样，以优化参数
+
+fitControl \<- trainControl(method = "**repeatedcv**", number = 10, repeats = 5)
+
+model_rf \<- train(abund \~ ., data = training_data, method = "**rf**", trControl =fitControl)
+
+```{r}
+#添加10折交叉验证，并重复5次
+fitControl <- trainControl(method = "repeatedcv", number = 10, repeats = 5)
+model_rf <- train(abund ~ ., 
+                  data = training_data,
+                  method = "rf", 
+                  trControl =fitControl)
+model_rf
+```
+
+### 4）在train()中，增加中心化和标准化等数据预处理，提高模型精度
+
+model_rf \<- train(abund \~ ., data = training_data, method = "**rf**",
+
+          preProcess = c('scale', 'center'),
+
+          trControl =fitControl)
+
+```{r}
+#在模型中添加中心化（center）、标准化（scale）预处理
+model_rf <- train(abund ~ ., 
+                  data = training_data,
+                  method = "rf",
+                  preProcess = c('scale', 'center'),
+                  trControl =fitControl)
+model_rf
+
+```
+
+### 5）rf有mtry和tree两个参数，可以通过expand.grid()设置调优，并在train()添加
+
+grid \<- expand.grid(.mtry=c(1:10))
+
+model_rf \<- train(biodiv \~ ., data = training_data, method = "**rf**",
+
+          preProcess = c('scale', 'center'),
+
+          trControl =fitControl,
+
+          **tuneGrid = grid**)
+
+```{r}
+grid <- expand.grid(.mtry=c(1:10))
+model_rf <- train(abund ~ ., 
+                  data = training_data, method = "rf",
+                  preProcess = c('scale', 'center'),
+                  trControl =fitControl,
+                  tuneGrid = grid)
+model_rf
+```
+
+# 问题三：
+
+## 3、什么是递归消除选择？在caret包中，为何选择随机森林等树模型时，没有特征选择这个过程？
+
+1）递归特征消除算法，是一种机器学习算法。其主要算法原理是基于模型的特征选择方法，通过反复训练模型和剔除不重要特征的方式来选择最优的特征子集。 大概的步骤是：
+
+①用训练数据训练一个初始模型，并计算每个特征的重要得分；
+
+②根据特征重要性得分进行排序，从中选择得分最低的若干个特征剔除；
+
+③在剩余的特征上重新训练模型并计算特征的重要性得分；
+
+④特征数达到预设目标或者全部剔除则停止算法，否则回到第二步；
+
+⑤选择剩余的特征作为最终的特征子集。
+
+2）因为随机森林树模型一方面在构建的过程实现了计算特征权重并且每次分割均选择最优特征；另一方面由于随机森林树模型构建过程进行了特征的随机采样，因而冗余的特征对于树模型的影响不大。综上，随即森林没有特征选择的的过程。

@@ -1,0 +1,55 @@
+---
+title: "homework_202603"
+author: "xncheng"
+date: "2026-03-28"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+1、针对ade4包内置的doubs数据集中的env，写一段代码，用管道“\|\>”、select()、filter()、rename()、arrange()等操作，选取dfs, alt, oxy 列，重命名 dfs 为 distance、oxy为oxygen。另外，保留alt大于 200米行，按 alt降序排列，新增一列oxygen_category，根据oxygen_category是否大于90，分为high和low类别，并计算每个类别的平均alt和平均PH，得到如下形式的结果。
+
+```{r}
+# 加载包
+library(ade4)
+library(dplyr)
+
+# 加载数据并提取 env
+data(doubs)
+env <- doubs$env
+
+# 数据处理
+result <- env |>
+  select(dfs, alt, oxy, pH) |>                # 选取需要的列（pH 后续用于计算平均 pH）
+  rename(distance = dfs, oxygen = oxy) |>     # 重命名列
+  filter(alt > 200) |>                        # 保留 alt > 200 的行
+  arrange(desc(alt)) |>                       # 按 alt 降序排列
+  mutate(oxygen_category = ifelse(oxygen > 90, "High", "Low")) |>  # 根据 oxygen 分类
+  group_by(oxygen_category) |>                # 按类别分组
+  summarise(mean_alt = mean(alt, na.rm = TRUE),   # 计算平均 alt
+            mean_pH = mean(pH, na.rm = TRUE))     # 计算平均 pH
+
+# 查看结果
+print(result)
+
+```
+
+2、根据doubs数据集中的env，完成如下填空，实现可视化。
+
+```{r}
+#加载包
+library(ade4)
+library(ggplot2)
+
+#加载数据并提取env
+data(doubs)
+env <- doubs$env
+
+#利用ggplot2包，绘制x=alt与y=oxy之间的散点图
+ggplot(data = env) +
+  geom_point(mapping = aes(alt, oxy))
+
+#在上述散点图中，将数据dfs距离调整颜色
+ggplot(data = env) +
+  geom_point(mapping = aes(alt, oxy, color = dfs))
+```

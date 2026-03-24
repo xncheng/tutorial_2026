@@ -1,0 +1,82 @@
+---
+title: "homework_202605"
+author: "xncheng"
+date: "`r Sys.Date()`"
+output:
+  word_document:
+    reference_docx: "my_style.docx"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      warning = FALSE,
+                      message = FALSE)
+```
+
+**1、请列出基于R脚本获取网络数据的三种方式？一些生态专业数据库提供了API，方便访问和下载数据，其中，API端点指的是什么？**
+
+1.  使用download.file()通过URL下载网络数据；
+
+2.  使用数据API下载数据；
+
+3.  直接读取公开的CSV、JSON、Excel文件，或者使用生态学数据库的专用R包进行数据读取(read.csv() ade4包等)。
+
+-   API端点是API提供的特定URL路径。
+
+**2、请完成下面的填空，加载R内置数据集Doubs，读取其中鱼类丰富度Spe数据，将Spe导入SQLite数据库，然后基于tidyverse包在数据库内部删除Spe中所有列为0的行，再将数据加载到R环境中。**
+
+**1）从ade4包中加载doubs数据集，并读取鱼类丰富度数据fish。**
+
+      data(doubs, [**package**]{.underline} = [**"ade4"**]{.underline})；Spe \<- doubs\$[**fish**]{.underline}
+
+```{r}
+data(doubs,package = "ade4");
+Spe <- doubs$fish
+```
+
+**2）创建和连接名为doubs.sqlite数据库，将Spe导入其中，名为Spe_sqlite。**
+
+      library(DBI); library(RSQLite)
+
+      con \<- dbConnect(RSQLite::SQLite(),  [**"doubs.sqlite"**]{.underline})
+
+      dbWriteTable(con, [**"Spe_sqlite", Spe,**]{.underline} overwrite = TRUE)
+
+```{r}
+library(DBI)
+library(RSQLite)
+
+con <- dbConnect(RSQLite::SQLite(),"doubs.sqlite")
+
+dbWriteTable(con, "Spe_sqlite",Spe,overwrite = TRUE)
+con
+```
+
+**3)  查看Spe_sqlite，并删除所有列为0的行，然后把数据拉到R内存。**
+
+     library(tidyverse)
+
+     Spe_tbl \<- tbl(con, [**"Spe_sqlite"**]{.underline})
+
+     Spe_tbl_sel \<- Spe_tbl %\>%
+
+            [**filter**]{.underline} (if_any(everything(), \~ . != 0))
+
+      Spe_local \<- [**collect**]{.underline} (Spe_tbl_sel)
+
+```{r}
+library(tidyverse)
+
+Spe_tbl <- tbl(con, "Spe_sqlite")
+Spe_tbl_sel <- Spe_tbl %>%
+        filter(if_any(everything(), ~ . != 0))
+Spe_local <- collect(Spe_tbl_sel)
+```
+
+**4)  将Spe_local以csv格式保存到data文件夹里。**
+
+     write.csv(Spe_local, [**"data/Spe_local.csv"**]{.underline})
+
+```{r}
+write.csv(Spe_local, "data/Spe_local.csv")
+```

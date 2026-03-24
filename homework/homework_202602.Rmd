@@ -1,0 +1,54 @@
+---
+title: "homework_202602"
+author: "xncheng"
+date: "2026-03-24"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+1、在RStudio中开启R script新文件，通过CRAN库安装tidyverse包，按照规范，写一段代码，完成查找包、安装包和查看包。
+
+```{r}
+# 检查tidyverse包是否已安装
+if (!require(tidyverse, quietly = TRUE)) {
+  # 如果未安装，则从CRAN安装
+  install.packages("tidyverse")
+  # 安装后加载包
+  library(tidyverse)
+} else {
+  message("tidyverse 包已安装并加载。")
+}
+
+# 查看tidyverse包的信息
+# 方法1：显示包的详细信息
+packageDescription("tidyverse")
+
+# 方法2：显示包的帮助文档
+help(package = "tidyverse")
+
+# 方法3：列出包中的所有函数和数据集
+library(help = "tidyverse")
+```
+
+2、写一段R脚本，自定义一个函数，检查随机向量rnorm(n = 10, mean= 35, sd = 10）中的每个值是否高于阈值35（可以用for循环，也可用apply()家族）。
+
+```{r}
+
+# 生成一个随机向量
+vec <- rnorm(n = 10, mean = 35, sd = 10)
+
+# 创建逻辑向量，用于存储每个元素的比较结果
+above_threshold <- logical(length(vec))
+
+
+
+# 使用 for 循环遍历向量的每个索引
+for (i in 1:10) {
+  above_threshold[i] <- vec[i] > 35
+}
+
+# 输出原始向量和比较结果
+print(vec)
+print(above_threshold)
+```
