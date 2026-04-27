@@ -1,0 +1,159 @@
+---
+title: "homework_202607"
+author: "xncheng"
+date: "`r Sys.Date()`"
+output:
+  word_document:
+    reference_docx: "my_style.docx"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      warning = FALSE,
+                      message = FALSE)
+```
+
+### 1、对于Doubs数据集，采样点的坐标单位为米，但没有坐标系信息，只有利用QGIS通过地理配准方法确定。请简述利用QGIS获取地理坐标系的过程，并给出对应点的地理坐标。
+
+①将含有采样点信息的CSV文件的导入QGIS中，通过添加图层→添加分隔文本图层，选择目标CSV文件并添加，页面会显示对应的采样点信息
+
+![](images/clipboard-453583843.png)
+
+![](images/clipboard-3847422940.png)
+
+![](images/clipboard-2802388686.png)
+
+②将文件导出为图像并保存
+
+![](images/clipboard-686811074.png)
+
+③安装Freehand Raster Georeference插件。
+
+![](images/clipboard-1123754977.png)
+
+④加载底图和doubs_river，并将地图编码调整为4326
+
+![](images/clipboard-3982638452.png)
+
+⑤使用Freehand Raster Georeference导入导出的采样点图像文件，使用栅格格式。
+
+![](images/clipboard-869412984.png)
+
+⑥利用插件功能移动、缩放图像文件，使得采样点与doubs河流匹配
+
+![](images/clipboard-1851863312.png)
+
+⑦新建形状文件图层，标记所有采样点位置，并对采样点进行编码（id）
+
+![](images/clipboard-2464964113.png)
+
+![](images/clipboard-1060899853.png)
+
+⑧将图层中的采样点包括坐标信息导出为表格文件
+
+![](images/clipboard-1878420622.png)
+
+![](images/clipboard-1610637906.png)
+
+### 2、利用ggplot2包，在doubs河流区域数字高程图（DEM）绘制doubs河流以及样点，请完成下列填空。
+
+dem_df \<- as.data.frame(doubs_dem, xy = TRUE, na.rm = TRUE)
+
+st_crs(doubs_dem) \<- \_\_\_(\_\_\_) \<- \_\_\_\_(\_\_\_\_)
+
+ggplot() +
+
+       geom_raster(data = dem_df, aes(***x = x, y = y***, fill = ***doubs_dem***)) +
+
+       geom_sf(data = doubs_pts, aes(***geometry = geometry***), color = "red") +
+
+       geom_sf(data = doubs_river, aes(***geometry = geometry***), color = "yellow") +
+
+       theme_minimal()
+
+```{r}
+# 加载包
+library(ggplot2)
+library(sf)
+library(terra)
+library(raster)
+
+# 读取数据
+doubs_river <- st_read("data/doubs_river.shp")
+doubs_pts <- st_read("data/sample_points.shp")
+doubs_dem <- terra::rast("data/doubs_dem.tif")
+
+# 统一坐标系
+# terra::crs(doubs_dem) <- "EPSG:4326"
+# st_crs(doubs_river) <- 4326
+# st_crs(doubs_pts) <- 4326
+#题目中要求使用下面一行代码实现，但在实际运行过程中报错，发现st_crs()不适用于doubs_dem函数类型
+#st_crs(doubs_dem) <- ___(___) <- ____(____)
+
+
+# 转换为数据框用于geom_raster
+dem_df <- as.data.frame(doubs_dem, xy = TRUE, na.rm = TRUE)
+
+# 绘图
+ggplot() +
+  geom_raster(data = dem_df, aes(x = x, y = y, fill = doubs_dem)) + 
+  geom_sf(data = doubs_pts, aes(geometry = geometry), color = "red", size = 1) +   
+  geom_sf(data = doubs_river, aes(geometry = geometry), color = "yellow", size = 0.5) + 
+  theme_minimal()
+```
+
+### 3、为确定空间样点的属性值是否存在空间自相关，用邻居的值（空间滞后，spatial lag）去对比对自身值，请回答如下问题：
+
+1）下图展示中心样点（蓝色）的Rook邻近（黄色）和Queen邻近（黄色），请分别给出蓝色样点的两种空间邻近的空间权重。
+
+![](images/clipboard-1234535502.png)
+
+Rook邻近，只考虑与蓝色格子共享边界的格子，即只考虑黄色点所在格子（左图），因此，蓝色点的空间向量为[0,1,0,1,0,1,0,1,0]。所有点的空间权重矩阵如下所示，如果采用标准化权重，则有四个黄色邻近的格子，即权重均为0.25。
+
+$$\begin{bmatrix}
+0&1&0&1&0&0&0&0&0\\
+1&0&1&0&1&0&0&0&0\\
+0&1&0&0&0&1&0&0&0\\
+1&0&0&0&1&0&1&0&0\\
+0&1&0&1&0&1&0&1&0\\
+0&0&1&0&1&0&0&0&1\\
+0&0&0&1&0&0&0&1&0\\
+0&0&0&0&1&0&1&0&1\\
+0&0&0&0&0&1&0&1&0\\
+\end{bmatrix}$$
+
+Queen邻近，考虑蓝色格子周围所有格子，即考虑黄色点所在格子（右图），因此，蓝色点的空间向量为[1,1,1,1,0,1,1,1,1]。所有点的空间权重矩阵如下所示，如果采用标准化权重，则有八个黄色邻近的格子，即权重均为0.125。
+
+$$\begin{bmatrix}
+0&1&0&1&1&0&0&0&0\\
+1&0&1&1&1&1&0&0&0\\
+0&1&0&0&1&1&0&0&0\\
+1&1&0&0&1&0&1&1&0\\
+1&1&1&1&0&1&1&1&1\\
+0&1&1&0&1&0&0&1&1\\
+0&0&0&1&1&0&0&1&0\\
+0&0&0&1&1&1&1&0&1\\
+0&0&0&0&1&1&0&1&0\\
+\end{bmatrix}$$
+
+2）常用Moran‘s scatter plot（MSL）和Lagged mean plot（LMP）两种图将空间滞后比对自身值，MSL和LMP图中的横坐标和纵坐标分别是什么？两图中都有一直线，此直线分别表达的意思是什么？
+
+**Moran’s scatter plot (MSL)**
+
+-   **横坐标**：样点自身属性值
+
+-   **纵坐标**：空间滞后值，即邻居属性值的加权平分
+
+-   **直线**：拟合的线性回归线，其斜率等于 Moran‘s I 指数，表示空间自相关的方向（正或负）和强度（绝对值大小）
+
+**Lagged mean plot (LMP)**
+
+-   **横坐标**：样点自身属性值离均差
+
+-   **纵坐标**：邻居属性值离均差的加权平分，即空间滞后平均离差
+
+-   **直线**：45° 对角线，作为完全空间正相关的参考线，表示当每个观测值与其邻居平均值完全相等时的理想情况，主要用来比较原始值与滞后值的差异——点在线上即为无局部差异，点在线上方即为变量值低于邻居均值，点在线下方即为变量值高于邻居均值。
+
+### 4. 若样点属性值存在空间自相关，可以通过创建预测各网格，并计算各网格到样点的缓冲距离（buffer distance）作为机器学习模型的输入特征，请解释什么是缓冲距离。
+
+在空间预测的场景中，“缓冲距离”（buffer distance）通常指从每一个待预测的网格点（或未知位置）出发，到周围已知样点的最短直线距离，或者到多个样点的某种距离组合（如最小距离、平均距离、加权距离等）。它用于量化网格点与已知样点之间的空间邻近程度，从而将空间自相关信息（即“邻近点属性相似”）作为特征引入机器学习模型。
